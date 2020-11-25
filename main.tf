@@ -32,44 +32,14 @@ resource "aws_key_pair" "main" {
 resource "aws_iam_role" "controlplane_iam_role" {
   name = "controlplane_iam_role"
   description = "IAM Role for k8 control plane"
-
-  assume_role_policy = <<EOF
-  {
-    "Version" : "2012-10-17",
-    "Statement" : [
-      {
-        "Action": "sts:AssumeRole",
-        "Principal": {
-          "Service": "ec2.amazonaws.com"
-        },
-        "Effect": "Allow",
-        "Sid": ""
-      }
-    ]
-  }
-  EOF
+  assume_role_policy = file("controlplane-trust-policy.json")
 }
 
 
 resource "aws_iam_role" "worker_iam_role" {
   name = "worker_iam_role"
   description = "IAM Role for k8 workers"
-
-  assume_role_policy = <<EOF
-  {
-    "Version" : "2012-10-17",
-    "Statement" : [
-      {
-        "Action": "sts:AssumeRole",
-        "Principal": {
-          "Service": "ec2.amazonaws.com"
-        },
-        "Effect": "Allow",
-        "Sid": ""
-      }
-    ]
-  }
-  EOF
+  assume_role_policy = file("worker-trust-policy.json")
 }
 
 
@@ -223,6 +193,7 @@ resource "aws_instance" "master" {
   instance_type = var.master_instance_type
   subnet_id     = var.subnet_id
   key_name      = aws_key_pair.main.key_name
+  iam_instance_profile = aws_iam_role.controlplane_iam_role.name
   vpc_security_group_ids = [
     aws_security_group.egress.id,
     aws_security_group.ingress_internal.id,
@@ -268,6 +239,7 @@ resource "aws_instance" "workers" {
   subnet_id                   = var.subnet_id
   associate_public_ip_address = true
   key_name                    = aws_key_pair.main.key_name
+   iam_instance_profile = aws_iam_role.worker_iam_role.name 
   vpc_security_group_ids = [
     aws_security_group.egress.id,
     aws_security_group.ingress_internal.id,
