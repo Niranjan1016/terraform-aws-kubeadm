@@ -78,47 +78,13 @@ resource "aws_iam_policy" "controlplane_iam_policy" {
   name = "controlplane_iam_policy"
   description = "IAM Policy for k8 control plane"
 
-  policy = <<EOF
-  {
-    "Version":"2012-10-17",
-    "Statement": [
-      {
-        "Action": [
-              "ec2:*",
-              "elasticloadbalancing:*",
-              "ecr:*",
-              "autoscaling:*",
-              "iam:CreateServiceLinkedRole",
-              "kms:DescribeKey"
-        ],
-        "Effect": "Allow",
-        "Resource": "*"
-      }
-    ]
-  }
-  EOF
+  policy =  file("controlplane-policy.json")
 }
 
 resource "aws_iam_policy" "worker_iam_policy" {
   name = "worker_iam_policy"
   description = "IAM Policy for k8 control plane"
-
-  policy = <<EOF
-  {
-    "Version":"2012-10-17",
-    "Statement": [
-      {
-        "Action": [
-              "ec2:Describe*",
-              "ecr:*",
-              "autoscaling:*"
-        ],
-        "Effect": "Allow",
-         "Resource": "*"
-      }
-    ]
-  }
-  EOF
+  policy = file("worker-plane.json")
 }
 
 
