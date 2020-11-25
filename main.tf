@@ -10,7 +10,7 @@ resource "random_pet" "cluster_name" {}
 
 locals {
   cluster_name = var.cluster_name != null ? var.cluster_name : random_pet.cluster_name.id
-  tags         = merge(var.tags, { "terraform-kubeadm:cluster" = local.cluster_name })
+  tags         = merge(var.tags, { "terraform-kubeadm:cluster" = local.cluster_name }, {"kubernetes.io/cluster/${local.cluster_name}" = "owner"})
 }
 
 #------------------------------------------------------------------------------#
@@ -25,11 +25,122 @@ resource "aws_key_pair" "main" {
 }
 
 #------------------------------------------------------------------------------#
-# Security groups
+# IAM
+#------------------------------------------------------------------------------#
+
+
+resource "aws_iam_role" "controlplane_iam_role" {
+  name = "controlplane_iam_role"
+  description = "IAM Role for k8 control plane"
+
+  assume_role_policy = <<EOF
+  {
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Action": "sts:AssumeRole",
+        "Principal": {
+          "Service": "ec2.amazonaws.com"
+        },
+        "Effect": "Allow",
+        "Sid": ""
+      }
+    ]
+  }
+  EOF
+}
+
+
+resource "aws_iam_role" "worker_iam_role" {
+  name = "worker_iam_role"
+  description = "IAM Role for k8 workers"
+
+  assume_role_policy = <<EOF
+  {
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Action": "sts:AssumeRole",
+        "Principal": {
+          "Service": "ec2.amazonaws.com"
+        },
+        "Effect": "Allow",
+        "Sid": ""
+      }
+    ]
+  }
+  EOF
+}
+
+
+
+resource "aws_iam_policy" "controlplane_iam_policy" {
+  name = "controlplane_iam_policy"
+  description = "IAM Policy for k8 control plane"
+
+  policy = <<EOF
+  {
+    "Version":"2012-10-17",
+    "Statement": [
+      {
+        "Action": [
+              "ec2:*",
+              "elasticloadbalancing:*",
+              "ecr:*",
+              "autoscaling:*",
+              "iam:CreateServiceLinkedRole",
+              "kms:DescribeKey"
+        ],
+        "Effect": "Allow",
+         Resource: "*"
+      }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_policy" "worker_iam_policy" {
+  name = "worker_iam_policy"
+  description = "IAM Policy for k8 control plane"
+
+  policy = <<EOF
+  {
+    "Version":"2012-10-17",
+    "Statement": [
+      {
+        "Action": [
+              "ec2:Describe*",
+              "ecr:*",
+              "autoscaling:*"
+        ],
+        "Effect": "Allow",
+         Resource: "*"
+      }
+    ]
+  }
+  EOF
+}
+
+
+resource "aws_iam_policy_attachment" "controlplane-attach" {
+  name       = "controlplane-attachment"
+  roles      = [aws_iam_role.controlplane_iam_role.name]
+  policy_arn = aws_iam_policy.controlplane_iam_policy.arn
+}
+
+resource "aws_iam_policy_attachment" "worker-role-attach" {
+  name       = "worker-attachment"
+  roles      = [aws_iam_role.worker_iam_role.name]
+  policy_arn = aws_iam_policy.worker_iam_policy.arn
+}
+
+#------------------------------------------------------------------------------#
+# SECURITY GROUPS
 #------------------------------------------------------------------------------#
 
 # The AWS provider removes the default "allow all "egress rule from all security
 # groups, so it has to be defined explicitly.
+
 resource "aws_security_group" "egress" {
   name        = "${local.cluster_name}-egress"
   description = "Allow all outgoing traffic to everywhere"
@@ -200,6 +311,8 @@ resource "aws_instance" "workers" {
   user_data = <<-EOF
   #!/bin/bash
 
+  internalDNS=$(curl http://169.254.169.254/latest/meta-data/local-hostname)
+  hostnamectl set-hostname $internalDNS
   # Install kubeadm and Docker
   apt-get update
   apt-get install -y apt-transport-https curl
