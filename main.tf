@@ -92,7 +92,7 @@ resource "aws_iam_policy" "controlplane_iam_policy" {
               "kms:DescribeKey"
         ],
         "Effect": "Allow",
-         Resource: "*"
+        "Resource": "*"
       }
     ]
   }
@@ -114,7 +114,7 @@ resource "aws_iam_policy" "worker_iam_policy" {
               "autoscaling:*"
         ],
         "Effect": "Allow",
-         Resource: "*"
+         "Resource": "*"
       }
     ]
   }
