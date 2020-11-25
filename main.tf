@@ -36,20 +36,20 @@ resource "aws_iam_role" "controlplane_iam_role" {
 }
 
 
-resource "aws_iam_role" "worker_iam_role" {
-  name = "worker_iam_role"
-  description = "IAM Role for k8 workers"
-  assume_role_policy = file("worker-trust-policy.json")
-}
+#resource "aws_iam_role" "worker_iam_role" {
+#  name = "worker_iam_role"
+#  description = "IAM Role for k8 workers"
+#  assume_role_policy = file("worker-trust-policy.json")
+#}
 
 
 
-resource "aws_iam_policy" "controlplane_iam_policy" {
-  name = "controlplane_iam_policy"
-  description = "IAM Policy for k8 control plane"
+#resource "aws_iam_policy" "controlplane_iam_policy" {
+#  name = "controlplane_iam_policy"
+#  description = "IAM Policy for k8 control plane"
 
-  policy =  file("controlplane-policy.json")
-}
+#  policy =  file("controlplane-policy.json")
+#}
 
 resource "aws_iam_policy" "worker_iam_policy" {
   name = "worker_iam_policy"
@@ -58,17 +58,17 @@ resource "aws_iam_policy" "worker_iam_policy" {
 }
 
 
-resource "aws_iam_policy_attachment" "controlplane-attach" {
-  name       = "controlplane-attachment"
-  roles      = [aws_iam_role.controlplane_iam_role.name]
-  policy_arn = aws_iam_policy.controlplane_iam_policy.arn
-}
+#resource "aws_iam_policy_attachment" "controlplane-attach" {
+#  name       = "controlplane-attachment"
+#  roles      = [aws_iam_role.controlplane_iam_role.name]
+#  policy_arn = aws_iam_policy.controlplane_iam_policy.arn
+#}
 
-resource "aws_iam_policy_attachment" "worker-role-attach" {
-  name       = "worker-attachment"
-  roles      = [aws_iam_role.worker_iam_role.name]
-  policy_arn = aws_iam_policy.worker_iam_policy.arn
-}
+#resource "aws_iam_policy_attachment" "worker-role-attach" {
+#  name       = "worker-attachment"
+#  roles      = [aws_iam_role.worker_iam_role.name]
+#  policy_arn = aws_iam_policy.worker_iam_policy.arn
+#}
 
 #------------------------------------------------------------------------------#
 # SECURITY GROUPS
@@ -193,7 +193,7 @@ resource "aws_instance" "master" {
   instance_type = var.master_instance_type
   subnet_id     = var.subnet_id
   key_name      = aws_key_pair.main.key_name
-  iam_instance_profile = aws_iam_role.controlplane_iam_role.name
+  iam_instance_profile = "ControlPlaneIAMRole"
   vpc_security_group_ids = [
     aws_security_group.egress.id,
     aws_security_group.ingress_internal.id,
@@ -239,7 +239,7 @@ resource "aws_instance" "workers" {
   subnet_id                   = var.subnet_id
   associate_public_ip_address = true
   key_name                    = aws_key_pair.main.key_name
-   iam_instance_profile = aws_iam_role.worker_iam_role.name 
+  iam_instance_profile = "WorkerIAMRole" 
   vpc_security_group_ids = [
     aws_security_group.egress.id,
     aws_security_group.ingress_internal.id,
